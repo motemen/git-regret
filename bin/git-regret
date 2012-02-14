@@ -1,0 +1,105 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use autodie ':all';
+use opts;
+use Pod::Usage;
+use List::MoreUtils qw(apply);
+use Term::ANSIColor;
+
+sub git (@) {
+    warn "git @_\n" if $ENV{REGRET_DEBUG};
+    if (defined wantarray) {
+        open my $pipe, '-|', ( git => @_ );
+        return apply { chomp } do {
+            local $/ = wantarray ? $/ : undef;
+            <$pipe>;
+        };
+    } else {
+        system git => @_;
+    }
+}
+
+my $command = shift || 'create';
+
+my $git_user = git 'config', '--get', 'user.name';
+
+given ($command) {
+    when ('create') {
+        opts
+            my $from => { isa => 'Str', default => $git_user },
+            my $to   => { isa => 'Str', required => 1 };
+
+        git 'notes', '--ref' => "review/request/$from/to/$to", 'append';
+    }
+
+    when ('push') {
+        git 'push', 'origin', "refs/notes/review/request/$git_user/to/*";
+    }
+
+    when ('pull') {
+        opts
+            my $from => { isa => 'Str', required => 1 },
+            my $to   => { isa => 'Str', default => $git_user };
+
+        git 'fetch', 'origin', "refs/notes/review/request/$from/to/$to:refs/notes/remote/review/request/$from/to/$to";
+        git 'notes', "--ref=review/request/$from/to/$to", 'merge', '-v', '-s' => 'union', "remote/review/request/$from/to/$to";
+    }
+
+    when ('list') {
+        opts
+            my $from => { isa => 'Str', default => '*' },
+            my $to   => { isa => 'Str', default => $git_user },
+            my $all;
+
+        my @log = do {
+            local $/ = "\0";
+            my $branch = "notes/review/request/$from/to/$to";
+            $branch = "--glob=$branch" if $from eq '*' || $to eq '*';
+            git 'log', $branch, '--reverse', '--name-only', '--pretty=format:%h', '-z', '--diff-filter=A';
+        };
+
+        foreach my $log (@log) {
+            next unless length $log;
+            my ($note, $commit) = split /\n/, $log;
+            my $note_name = git 'name-rev', '--name-only', $note;
+
+            my $status = do {
+                my $note = git 'log', '-1', $commit, '--notes=review/comment/*', '--pretty=%N';
+                length $note ? 'COMMENTED' : 'NEW';
+            };
+
+            if ($all) {
+                # nop
+            } else {
+                next unless $status eq 'NEW';
+            }
+
+            say colored [ 'bold cyan' ], "[$status] $note_name";
+            git '--no-pager', 'log', "master..$commit",
+                '--color', '--stat', '--decorate', '--date=relative', '--graph', '--simplify-by-decoration', '--notes=review/*';
+            say '';
+        }
+    }
+
+    default {
+        pod2usage();
+    }
+}
+
+__END__
+
+=head1 NAME
+
+git-regret
+
+=head1 USAGE
+
+git-regret create [--to=user]
+
+git-regret list [--from=user] [--to=user] [--all]
+
+git-regret push
+
+git-regret pull --from=user
