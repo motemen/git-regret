@@ -79,6 +79,7 @@ given ($command) {
             my ($from, $to) = $note_name =~ m</review/request/(.+?)/to/([^~^]+)>;
             say colored([ 'bold', 'yellow' ], $status),
                 sprintf(' [%s] ', colored([ 'green' ], $note)),
+                colored([ 'blue' ], sprintf '%12s ', git 'log', '-1', $note, '--pretty=format:%ar'),
                 colored([ 'bold', 'blue' ], sprintf('%9s ⇢  %-9s', $from, $to)),
                 colored([ 'yellow' ], $commit),
                 ' ',
