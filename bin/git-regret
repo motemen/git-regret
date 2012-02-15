@@ -67,19 +67,35 @@ given ($command) {
 
             my $status = do {
                 my $note = git 'log', '-1', $commit, '--notes=review/comment/*', '--pretty=%N';
-                length $note ? 'COMMENTED' : 'NEW';
+                length $note ? ' ' : '⚡';
             };
 
             if ($all) {
                 # nop
             } else {
-                next unless $status eq 'NEW';
+                next unless $status eq '⚡';
             }
 
-            say colored [ 'bold cyan' ], "[$status] $note_name";
-            git '--no-pager', 'log', "master..$commit",
-                '--color', '--stat', '--decorate', '--date=relative', '--graph', '--simplify-by-decoration', '--notes=review/*';
-            say '';
+            my ($from, $to) = $note_name =~ m</review/request/(.+?)/to/([^~^]+)>;
+            say colored([ 'bold', 'yellow' ], $status),
+                sprintf(' [%s] ', colored([ 'green' ], $note)),
+                colored([ 'bold', 'blue' ], sprintf('%9s ⇢  %-9s', $from, $to)),
+                colored([ 'yellow' ], $commit),
+                ' ',
+                git 'name-rev', '--name-only' => $commit;
+        }
+    }
+
+    when ('show') {
+        my $note = shift or pod2usage();
+        my (undef, $commit) = git 'show', '--name-only', '--oneline', $note;
+
+        for (
+            git 'log', "master..$commit", '--notes=review/*',
+                '--color', '--stat', '--decorate', '--date=relative', '--graph', '--simplify-by-decoration', '--sparse',
+        ) {
+            s<^(.+ )Notes \(review/request/(.+?)/to/(.+?)\):><$1 . colored [ 'bold', 'blue' ], "$2 ⇢  $3">e;
+            say;
         }
     }
 
@@ -103,3 +119,5 @@ git-regret list [--from=user] [--to=user] [--all]
 git-regret push
 
 git-regret pull --from=user
+
+git-regret show note_id
