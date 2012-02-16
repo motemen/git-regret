@@ -37,7 +37,22 @@ given ($command) {
             my $from => { isa => 'Str', default => $git_user },
             my $to   => { isa => 'Str', required => 1 };
 
-        git 'notes', '--ref' => "review/request/$from/to/$to", 'append';
+        my $commit = shift || 'HEAD';
+        git 'notes', '--ref' => "review/request/$from/to/$to", 'append', $commit;
+    }
+
+    when ('comment') {
+        opts
+            my $from => { isa => 'Str', default => $git_user },
+        my $commit = shift || 'HEAD';
+        git 'notes', '--ref' => "review/comment/$from", 'append', $commit;
+    }
+
+    when ('show-comment') {
+        opts
+            my $from => { isa => 'Str', default => $git_user },
+        my $commit = shift || 'HEAD';
+        git 'notes', '--ref' => "review/comment/$from", 'show', $commit;
     }
 
     when ('push') {
