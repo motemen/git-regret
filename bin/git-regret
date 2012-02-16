@@ -8,6 +8,12 @@ use Pod::Usage;
 use List::MoreUtils qw(apply);
 use Term::ANSIColor;
 
+our $STATUS_MARKER = {
+    new       => '⚡',
+    commented => '-',
+    merged    => ' ',
+};
+
 sub git (@) {
     warn "git @_\n" if $ENV{REGRET_DEBUG};
     if (defined wantarray) {
@@ -66,20 +72,24 @@ given ($command) {
             my $note_name = git 'name-rev', '--name-only', $note;
 
             my $status = do {
-                my $note = git 'log', '-1', $commit, '--notes=review/comment/*', '--pretty=%N';
-                length $note ? ' ' : '⚡';
+                if (git('merge-base', 'master', $commit) eq $commit) {
+                    'merged';
+                } else {
+                    my $note = git 'log', '-1', $commit, '--notes=review/comment/*', '--pretty=%N';
+                    length $note ? 'commented' : 'new';
+                }
             };
 
             if ($all) {
                 # nop
             } else {
-                next unless $status eq '⚡';
+                next if $status eq 'merged';
             }
 
             my ($from, $to) = $note_name =~ m</review/request/(.+?)/to/([^~^]+)>;
-            say colored([ 'bold', 'yellow' ], $status),
+            say colored([ 'bold', 'yellow' ], $STATUS_MARKER->{$status}),
                 sprintf(' [%s] ', colored([ 'green' ], $note)),
-                colored([ 'blue' ], sprintf '%12s ', git 'log', '-1', $note, '--pretty=format:%ar'),
+                colored([ 'blue' ], sprintf '%14s ', git 'log', '-1', $note, '--pretty=format:%ar'),
                 colored([ 'bold', 'blue' ], sprintf('%9s ⇢  %-9s', $from, $to)),
                 colored([ 'yellow' ], $commit),
                 ' ',
