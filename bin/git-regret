@@ -113,8 +113,16 @@ given ($command) {
     }
 
     when ('show') {
-        my $note = shift or pod2usage();
-        my (undef, $commit) = git 'show', '--name-only', '--oneline', $note;
+        my $commit = shift or pod2usage();
+
+        local *STDOUT = do {
+            if (my $pager = $ENV{GIT_PAGER} // git 'config', '--get', 'core.pager') {
+                open my $pipe, '|-', $pager;
+                $pipe;
+            } else {
+                *STDOUT;
+            }
+        };
 
         for (
             git 'log', "master..$commit", '--notes=review/*',
@@ -146,4 +154,4 @@ git-regret push
 
 git-regret pull --from=user
 
-git-regret show note_id
+git-regret show commit
