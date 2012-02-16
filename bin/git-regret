@@ -27,7 +27,7 @@ sub git (@) {
     }
 }
 
-my $command = shift || 'create';
+my $command = shift or pod2usage();
 
 my $git_user = git 'config', '--get', 'user.name';
 
