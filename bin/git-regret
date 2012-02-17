@@ -45,7 +45,7 @@ given ($command) {
         opts
             my $from => { isa => 'Str', default => $git_user },
         my $commit = shift || 'HEAD';
-        git 'notes', '--ref' => "review/comment/$from", 'append', $commit;
+        git 'notes', '--ref' => "review/comment/$from", 'edit', $commit;
     }
 
     when ('show-comment') {
@@ -128,6 +128,7 @@ given ($command) {
             git 'log', "master..$commit", '--notes=review/*',
                 '--color', '--stat', '--decorate', '--date=relative', '--graph', '--simplify-by-decoration', '--sparse',
         ) {
+            s<^(.+ )Notes \(review/comment/(.+?)\):><$1 . colored [ 'bold', 'blue' ], "✍ $2">e;
             s<^(.+ )Notes \(review/request/(.+?)/to/(.+?)\):><$1 . colored [ 'bold', 'blue' ], "$2 ⇢  $3">e;
             say;
         }
