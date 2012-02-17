@@ -68,6 +68,20 @@ given ($command) {
         git 'notes', "--ref=review/request/$from/to/$to", 'merge', '-v', '-s' => 'union', "remote/review/request/$from/to/$to";
     }
 
+    when ('pull-all') {
+        git 'fetch', 'origin', 'refs/notes/review/*:refs/notes/remote/review/*';
+
+        for (git 'rev-parse', '--symbolic-full-name', '--glob=refs/notes/remote/review/*') {
+            my ($name) = m<^refs/notes/remote/review/(.+)$> or do {
+                warn "Could not parse: '$_'";
+                next;
+            };
+            local $| = 1;
+            print "$name ... ";
+            git 'notes', "--ref=review/$name", 'merge', '-v', '-s' => 'union', "remote/review/$name";
+        }
+    }
+
     when ('list') {
         opts
             my $from => { isa => 'Str', default => '*' },
