@@ -57,18 +57,11 @@ given ($command) {
 
     when ('push') {
         git 'push', 'origin', "refs/notes/review/request/$git_user/to/*";
+        git 'push', 'origin', "refs/notes/review/comment/$git_user";
     }
 
     when ('pull') {
-        opts
-            my $from => { isa => 'Str', required => 1 },
-            my $to   => { isa => 'Str', default => $git_user };
-
-        git 'fetch', 'origin', "refs/notes/review/request/$from/to/$to:refs/notes/remote/review/request/$from/to/$to";
-        git 'notes', "--ref=review/request/$from/to/$to", 'merge', '-v', '-s' => 'union', "remote/review/request/$from/to/$to";
-    }
-
-    when ('pull-all') {
+        git 'remote', 'update';
         git 'fetch', 'origin', 'refs/notes/review/*:refs/notes/remote/review/*';
 
         for (git 'rev-parse', '--symbolic-full-name', '--glob=refs/notes/remote/review/*') {
@@ -167,6 +160,6 @@ git-regret list [--from=user] [--to=user] [--all]
 
 git-regret push
 
-git-regret pull --from=user
+git-regret pull
 
 git-regret show commit
